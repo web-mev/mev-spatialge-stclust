@@ -88,7 +88,7 @@ spat <- STclust(
 
 # Export of the cluster data
 df <- data.frame(
-    spat@spatial_meata[opt$sample_name]
+    spat@spatial_meta[opt$sample_name]
 )[, c(1,2,3,6)]
 colnames(df) <- c("barcodes", "ypos", "xpos", "clusterid")
 write.table(
