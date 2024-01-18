@@ -21,7 +21,7 @@ option_list <- list(
     make_option(
         c('-n', '--normalization'),
         help='Normalization method of `log` or `sct`'
-    )
+    ),
     make_option(
         c('-k', '--kclusters'),
         help="Number of clusters or `dtc` for auto clusters"
