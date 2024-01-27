@@ -1,8 +1,4 @@
-# placeholder container name
-FROM ghcr.io/web-mev/base-spatialge-docker
+#FROM ghcr.io/web-mev/base-spatialge-docker:sha-9da83dd6a48aaa6e1f9bd76ef467cf2a9368fed1
+FROM blawney/norm
 
-# Install the optparse package, which allows better commandline arg parsing
-RUN R -e "install.packages('optparse',dependencies=TRUE, repos='http://cran.rstudio.com/')"
-
-RUN mkdir -p /opt/software
-ADD stclust.R /opt/software/
+ADD stclust.R /usr/local/bin

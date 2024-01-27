@@ -1,8 +1,8 @@
 suppressMessages(suppressWarnings(library('spatialGE')))
+suppressMessages(suppressWarnings(library('optparse')))
 
 # args from command line:
 args <- commandArgs(TRUE)
-
 
 # note, -k --kclusters can be integer or character ('dtc') for valid options
 option_list <- list(
@@ -46,34 +46,87 @@ if (is.null(opt$coordinates_file)){
     quit(status=1)
 }
 
-if (is.null(opt$output_file_prefix)) {
-    message('Need to provide the prefix for the output file with the -o arg.')
+# transform the name of the normalization scheme:
+if (is.null(opt$normalization)){
+    message('Need to provide a normalization scheme with the -n/--normalization arg.')
+    quit(status=1)
+} else if(tolower(opt$normalization) == 'sctransform'){
+    norm_scheme <- 'sct'
+} else if(tolower(opt$normalization) == 'log'){
+    norm_scheme <- 'log'
+} else {
+    message('We only accept `log` or `SCTransform` for the normalization scheme.')
     quit(status=1)
 }
 
-# Set up expected directory structure for spatial data import
-indir = paste("./", opt$sample_name, sep="")
-dir.create(
-    paste(
-        "./",
-        opt$sample_name,
-        "/spatial/",
-        sep=""
-    ),
-    recursive=T
-)
-# Copy files into directory structure
-file.copy(opt$input_file, paste("./", opt$sample_name, sep=""))
-file.copy(opt$coordinates_file, paste("./", opt$sample_name, "/spatial/", sep=""))
+# change the working directory to co-locate with the counts file:
+working_dir <- dirname(opt$input_file)
+setwd(working_dir)
+
+# STlist expects that the first column is the gene names- so we don't use row.names arg
+rnacounts <- read.table(opt$input_file, sep='\t', header=T, check.names=F)
+
+# Same as for the counts, the expectation is that the coordinates file does not
+# have row.names and instead has the barcodes in the first column. For now, however,
+# we set the row names and then later alter.
+spotcoords <- read.table(opt$coordinates_file, sep='\t', row.names=1, header=T, check.names=T)
+
+# the barcodes in coords dataframe can be a superset of the count matrix columns.
+# For example, if the matrix is filtered for QC, there may be poor quality spots
+# that were filtered out. 
+# The opposite is not the case since we cannot have a barcode without a position.
+barcodes_from_counts <- colnames(rnacounts)[2:dim(rnacounts)[2]] 
+diff_set <- setdiff(barcodes_from_counts, rownames(spotcoords))
+num_invalid_barcodes <- length(diff_set)
+if (num_invalid_barcodes > 0) {
+    max_print <- 5
+    if (num_invalid_barcodes < max_print) {
+        invalid_barcodes <- paste(diff_set[1:num_invalid_barcodes], collapse=', ')
+    } else {
+        invalid_barcodes <- sprintf('%s, and %d others.', paste(diff_set[1:max_print], collapse=', '), num_invalid_barcodes-max_print)
+    }
+    message(sprintf('The set of barcodes in your count matrix must be a subset of those in your coordinates file. Problems include: %s', invalid_barcodes))
+    quit(status=1)
+} else {
+    # the STList constructor below will not accept coordinate files which are a superset of the 
+    # count matrix barcodes. We handle that here:
+    spotcoords <- spotcoords[barcodes_from_counts,]
+
+    # we need the barcodes in the first col, not the row names. We used the rownames for indexing
+    # convenience above, but need to change that now:
+    spotcoords <- cbind(rownames(spotcoords), data.frame(spotcoords, row.names=NULL))
+}
+
+# Now, to avoid any unexpected issues downstream, we need to conver the column names, etc.
+# to preserve the barcodes/column names, we create a dataframe of the original and 'R mutated'
+# names. We then run through everything with the mutated names and finally map back.
+orig_col_names <- colnames(rnacounts)
+proper_names <- make.names(orig_col_names)
+colname_mapping = data.frame(
+    orig_names = orig_col_names,
+    row.names=proper_names,
+    stringsAsFactors=F)
+colnames(rnacounts) <- proper_names
+
+
+spotcoords[,1] <- make.names(spotcoords[,1]) 
+rownames(spotcoords) <- make.names(rownames(spotcoords))
+
+# We will use a list of dataframes in the call to STlist
+rnacounts_list <- list()
+rnacounts_list[[opt$sample_name]] <- rnacounts
+spotcoords_list <- list()
+spotcoords_list[[opt$sample_name]] <- spotcoords
 
 # Import input data into spatialGE object
 spat <- STlist(
-    rnacounts=indir, 
+    rnacounts=rnacounts_list,
+    spotcoords=spotcoords_list, 
     samples=c(opt$sample_name)
 )
 
 # Transform the data
-spat <- transform_data(spat, method=opt$normalization)
+spat <- transform_data(spat, method=norm_scheme)
 
 # Run the clustering algorithm
 # Note: ws was not included in the parameters
@@ -91,8 +144,20 @@ df <- data.frame(
     spat@spatial_meta[opt$sample_name]
 )[, c(1,2,3,6)]
 colnames(df) <- c("barcodes", "ypos", "xpos", "clusterid")
+
+# convert back to the original barcodes:
+df$barcodes <- colname_mapping[df$barcodes, 'orig_names']
+
+if (is.null(opt$output_file_prefix)) {
+    output_filename <- sprintf('%s/%s.spatialge_clustered.%s.tsv', working_dir, opt$sample_name, opt$normalization)
+} else {
+    output_filename <- sprintf('%s/%s.%s.spatialge_clustered.%s.tsv', working_dir, opt$sample_name, opt$output_file_prefix, opt$normalization)
+}
 write.table(
     df,
-    paste(opt$output_file_prefix, "tsv", sep="."),
+    file=output_filename,
     sep="\t", quote=F, row.names=F
 )
+json_str = paste0('{"clustered_positions":"', output_filename, '"}')
+output_json <- paste(working_dir, 'outputs.json', sep='/')
+write(json_str, output_json)
