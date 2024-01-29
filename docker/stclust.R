@@ -59,6 +59,23 @@ if (is.null(opt$normalization)){
     quit(status=1)
 }
 
+# we can accept an integer or 'dtc' as an argument to STclust below.
+# HOWEVER, an integer represented as a string 
+if(tolower(opt$kclusters) == 'dtc'){
+    cluster_k <- 'dtc'
+} else {
+    # if here, the argument was not equal to dtc. Can now either be 
+    # a number (represented as a string variable) OR an invalid string
+    # which cannot be cast as an integer
+    as_number <- as.numeric(opt$kclusters)
+    if (is.na(as_number)){
+        message('The -k/--kclusters option must be an integer or "dtc" for automatic selection.')
+        quit(status=1)
+    } else {
+        cluster_k <- as.integer(as_number)
+    }
+}
+
 # change the working directory to co-locate with the counts file:
 working_dir <- dirname(opt$input_file)
 setwd(working_dir)
@@ -110,7 +127,7 @@ colnames(rnacounts) <- proper_names
 
 
 spotcoords[,1] <- make.names(spotcoords[,1]) 
-rownames(spotcoords) <- make.names(rownames(spotcoords))
+#rownames(spotcoords) <- make.names(rownames(spotcoords))
 
 # We will use a list of dataframes in the call to STlist
 rnacounts_list <- list()
@@ -135,7 +152,7 @@ spat <- transform_data(spat, method=norm_scheme)
 #   optional inclusion?
 spat <- STclust(
     spat,
-    ks=opt$kclusters,
+    ks=cluster_k,
     ws= 0.025
 )
 
@@ -149,9 +166,9 @@ colnames(df) <- c("barcodes", "ypos", "xpos", "clusterid")
 df$barcodes <- colname_mapping[df$barcodes, 'orig_names']
 
 if (is.null(opt$output_file_prefix)) {
-    output_filename <- sprintf('%s/%s.spatialge_clustered.%s.tsv', working_dir, opt$sample_name, opt$normalization)
+    output_filename <- sprintf('%s/%s.spatialge_clustered.%s_normed.tsv', working_dir, opt$sample_name, opt$normalization)
 } else {
-    output_filename <- sprintf('%s/%s.%s.spatialge_clustered.%s.tsv', working_dir, opt$sample_name, opt$output_file_prefix, opt$normalization)
+    output_filename <- sprintf('%s/%s.%s.spatialge_clustered.%s_normed.tsv', working_dir, opt$sample_name, opt$output_file_prefix, opt$normalization)
 }
 write.table(
     df,
