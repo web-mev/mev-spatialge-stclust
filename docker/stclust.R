@@ -59,9 +59,9 @@ if (is.null(opt$normalization)){
     quit(status=1)
 }
 
-# we can accept an integer or 'dtc' as an argument to STclust below.
+# we can accept an integer or 'automatic' as an argument to STclust below.
 # HOWEVER, an integer represented as a string 
-if(tolower(opt$kclusters) == 'dtc'){
+if(tolower(opt$kclusters) == 'automatic'){
     cluster_k <- 'dtc'
 } else {
     # if here, the argument was not equal to dtc. Can now either be 
