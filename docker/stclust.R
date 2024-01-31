@@ -88,6 +88,10 @@ rnacounts <- read.table(opt$input_file, sep='\t', header=T, check.names=F)
 # we set the row names and then later alter.
 spotcoords <- read.table(opt$coordinates_file, sep='\t', row.names=1, header=T, check.names=T)
 
+# only take the first two columns for the (x,y) positions. Additional columns
+# can cause problems downstream
+spotcoords <- spotcoords[,c(1,2)]
+
 # the barcodes in coords dataframe can be a superset of the count matrix columns.
 # For example, if the matrix is filtered for QC, there may be poor quality spots
 # that were filtered out. 
@@ -158,7 +162,7 @@ spat <- STclust(
 
 # Export of the cluster data
 df <- data.frame(
-    spat@spatial_meta[opt$sample_name]
+    spat@spatial_meta[[opt$sample_name]]
 )[, c(1,2,3,6)]
 colnames(df) <- c("barcodes", "ypos", "xpos", "clusterid")
 
