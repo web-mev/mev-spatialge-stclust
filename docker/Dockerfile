@@ -1,3 +1,3 @@
-FROM ghcr.io/web-mev/base-spatialge-docker:sha-09c68030bc197fbdc91b712b3e54597b4896eb91
+FROM ghcr.io/web-mev/base-spatialge-docker:sha-b9c9d80863af47a4ac85f420b96fd1ff57e2cde7
 
 ADD stclust.R /usr/local/bin
