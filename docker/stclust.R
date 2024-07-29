@@ -30,6 +30,14 @@ option_list <- list(
     make_option(
         c('-o','--output_file_prefix'),
         help='The prefix for the output file'
+    ),
+        make_option(
+        c('-x', '--xpos_col'),
+        help='The column header for the x-position coordinate metadata'
+    ),
+    make_option(
+        c('-y', '--ypos_col'),
+        help='The column header for the y-position coordinate metadata'
     )
 )
 
@@ -82,7 +90,11 @@ working_dir <- dirname(opt$input_file)
 setwd(working_dir)
 
 # call the utility function which will return a list with the necessary items:
-spat_list <- prep_stlist(opt$input_file, opt$coordinates_file, opt$sample_name)
+spat_list <- prep_stlist(opt$input_file,
+                         opt$coordinates_file,
+                         opt$sample_name,
+                         opt$xpos_col,
+                         opt$ypos_col)
 
 # unpack:
 colname_mapping <- spat_list$colname_mapping
