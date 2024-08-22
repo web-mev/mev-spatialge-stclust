@@ -1,1 +1,1 @@
-Rscript /usr/local/bin/stclust.R -f {{raw_counts}} -c {{coords_metadata}} -s {{sample_name}} -n {{normalization_method}} -k {{cluster_num}}  -x {{xpos_col}} -y {{ypos_col}} {% if output_prefix %} -o {{output_prefix}} {% endif %}
+Rscript /usr/local/bin/stclust.R -f {{raw_counts}} -c {{coords_metadata}} -s "{{sample_name}}" -n {{normalization_method}} -k {{cluster_num}}  -x {{xpos_col}} -y {{ypos_col}} {% if output_prefix %} -o {{output_prefix}} {% endif %}
